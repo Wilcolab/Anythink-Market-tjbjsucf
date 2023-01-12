@@ -37,7 +37,7 @@ const ItemPreview = (props) => {
     >
       <img
         alt="item"
-        src={item.image}
+        src="placeholder.png"
         onerror="this.src=placeholder.png"
         className="card-img-top item-img"
         style={{ borderRadius: "20px" }}
@@ -51,7 +51,6 @@ const ItemPreview = (props) => {
           <Link to={`/@${item.seller.username}`} className="flex-grow-1">
             <img
               src={item.seller.image}
-              onerror="this.src=placeholder.png"
               alt={item.seller.username}
               className="user-pic rounded-circle pr-1"
             />
