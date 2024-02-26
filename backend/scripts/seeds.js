@@ -1,103 +1,84 @@
-const https = require('https');
+let mongoose = require('mongoose')
+let User = require('../models/User')
+let Item = require('../models/Item')
+let Comment = require('../models/Comment')
 
-const BASE_URL = 'http://localhost:3000/api'; // Substitua pela URL base da sua aplicação, use https para conexões seguras
+// let User = mongoose.model("User", UserSchema);
+// let Item = mongoose.model("Item", ItemSchema);
+// let Comment = mongoose.model("Comment", CommentSchema)
 
-function makeRequest(options, data) {
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      let responseBody = '';
-      
-      res.on('data', (chunk) => {
-        responseBody += chunk;
-      });
+const numberToSeed = 100;
+const maxRetries = 5;
 
-      res.on('end', () => {
-        resolve(JSON.parse(responseBody));
-      });
-    });
+main().catch(err => console.error(err)).then(() => mongoose.disconnect());
 
-    req.on('error', (error) => {
-      reject(error);
-    });
-
-    if (data) {
-      req.write(data);
+async function main() {
+    await mongoose.connect(process.env.MONGODB_URI);
+    for (let i = 0; i < maxRetries; i++){
+        try{
+            await generateUsers().catch();
+            break;
+        } catch (error) {
+            console.error(`Attempt ${i + 1}...`)
+        }
     }
-
-    req.end();
-  });
+    for (let i = 0; i < maxRetries; i++){
+        try{
+            await generateItems();
+        } catch (error) {
+            console.error(error)
+        }
+    }
 }
 
-async function createUser(username, email, password) {
-  const data = JSON.stringify({
-    user: { username, email, password }
-  });
+function generateRandomName() {
+    const firstNames = ['John', 'Jane', 'Sam', 'Sally', 'James', 'Emily', 'Kyle', 'Jenny', 'Timothy', 'Jake', 'Greg', 'Dan', 'Cindy', 'Aaron', 'Adam'];
+    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Liang', 'Ermey', 'Wang'];
 
-  const options = {
-    hostname: 'localhost',
-    port: 3000,
-    path: '/users',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    rejectUnauthorized: false // Apenas para desenvolvimento, pois ignora certificados SSL inválidos
-  };
-
-  return makeRequest(options, data);
+    const randomFirstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const name = `${randomFirstName}${randomLastName}${Math.floor(Math.random() * 1000)}`;
+    return name;
 }
 
-async function createItem(title, description, image, tagList) {
-  const data = JSON.stringify({ title, description, image, tagList });
+function generateRandomTitle(){
+    const adjectives = ['Amazing', 'Incredible', 'Fantastic', 'Magical', 'Colorful', 'Awesome', 'Brilliant', 'Giant', 'Strong', 'Delicious'];
+    const nouns = ['Phone', 'Laptop', 'Headphones', 'Chair', 'Table', 'Shoes', 'Watch', 'Yogurt', 'Charger', 'Dog', 'Bench', 'Beanbag'];
 
-  const options = {
-    hostname: 'localhost',
-    port: 3000,
-    path: '/items',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    rejectUnauthorized: false // Apenas para desenvolvimento
-  };
+    const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
 
-  return makeRequest(options, data);
+    return `${randomAdjective} ${randomNoun}`;
 }
 
-async function createComment(itemId, comment) {
-  const data = JSON.stringify({ comment });
-
-  const options = {
-    hostname: 'localhost',
-    port: 3000,
-    path: `/items/${itemId}/comments`,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    rejectUnauthorized: false // Apenas para desenvolvimento
-  };
-
-  return makeRequest(options, data);
+async function generateUsers(){
+    for (let i = 0; i < numberToSeed; i++){
+        let username = generateRandomName();
+        let email = `${username}@emailaddress.com`;
+        let user = new User({username, email})
+        await user.save()
+    }
 }
 
-async function seedData() {
-  for (let i = 0; i < 100; i++) {
-    const username = `user${i}`;
-    const email = `user${i}@example.com`;
-    const password = 'password';
-    const userResponse = await createUser(username, email, password);
-
-    const title = `Product ${i}`;
-    const description = 'Description for product ' + i;
-    const image = 'Image URL here';
-    const tagList = [];
-    const itemResponse = await createItem(title, description, image, tagList);
-
-    await createComment(itemResponse.id, `Comment for product ${itemResponse.id}`);
-  }
-
-  console.log('Seeding completed!');
+async function generateItems(){
+    try {
+        let description = "The best a person can get, guaranteed!"
+        let image = "./frontend/public/sunray.jpeg"
+        let body = "This is a fantastic product"
+        let seller = await User.findOne();
+        for (let i = 0; i < numberToSeed; i++){
+            let title = generateRandomTitle();
+            let item = new Item({
+                title, 
+                description, 
+                image, 
+                favoritesCount: (Math.floor(Math.random() * 100))
+            });
+            let comment = new Comment({ body, item, seller});
+            await item.save();
+            await comment.save();
+        }
+    } catch (error) {
+        console.error(error);
+    }
 }
-
-seedData().catch((error) => console.error('Seeding failed:', error));
