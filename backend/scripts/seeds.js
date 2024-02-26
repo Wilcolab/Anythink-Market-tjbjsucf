@@ -1,6 +1,6 @@
 const https = require('https');
 
-const BASE_URL = 'https://localhost:3000'; // Substitua pela URL base da sua aplicação, use https para conexões seguras
+const BASE_URL = 'http://localhost:3000/api'; // Substitua pela URL base da sua aplicação, use https para conexões seguras
 
 function makeRequest(options, data) {
   return new Promise((resolve, reject) => {
